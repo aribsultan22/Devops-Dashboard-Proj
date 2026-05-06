@@ -1,0 +1,43 @@
+version: '3.9'
+
+services:
+  # The main application
+  app:
+    build:
+      context: .
+      target: builder           # use builder stage locally (has devDeps + nodemon)
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: development
+      DB_HOST: postgres          # "postgres" = the service name below — Docker resolves it
+      DB_PORT: 5432
+      DB_NAME: devops_dashboard
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+    depends_on:
+      postgres:
+        condition: service_healthy  # wait until postgres is actually ready
+    command: npm run dev
+    volumes:
+      - ./src:/app/src             # hot-reload: changes to src/ restart the server
+
+  # Local PostgreSQL database
+  postgres:
+    image: postgres:15-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: devops_dashboard
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data   # data persists across restarts
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
